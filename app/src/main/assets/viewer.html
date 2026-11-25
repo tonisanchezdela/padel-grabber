@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Padel Grabber · Directo</title>
+<style>
+  :root { --navy:#0B1D33; --navy2:#132B4A; --navy3:#1D3A60; --lime:#C6FF00; --grey:#9FB3C8; --red:#FF3B30; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; background:var(--navy); color:#fff; font-family:"Roboto Condensed","Arial Narrow",system-ui,sans-serif; }
+  header { display:flex; align-items:center; gap:10px; padding:12px 16px; }
+  .ball { width:26px; height:26px; border-radius:50%; background:var(--lime); position:relative; flex:none; }
+  .ball:before,.ball:after { content:""; position:absolute; top:3px; width:16px; height:20px; border:2px solid #fff; border-radius:50%; }
+  .ball:before { left:-9px; border-left-color:transparent; border-top-color:transparent; border-bottom-color:transparent; }
+  .ball:after { right:-9px; border-right-color:transparent; border-top-color:transparent; border-bottom-color:transparent; }
+  .brand { font-weight:800; font-size:20px; letter-spacing:.5px; }
+  .brand b { color:var(--lime); }
+  .live { margin-left:auto; font-size:13px; font-weight:700; background:var(--red); padding:4px 10px; border-radius:12px; }
+  .live.off { background:var(--navy3); }
+  .stage { position:relative; width:100%; background:#000; aspect-ratio:16/9; overflow:hidden; }
+  .stage img { width:100%; height:100%; object-fit:contain; display:block; }
+  .sb { position:absolute; left:2.5%; top:4%; font-size:clamp(11px,2.6vw,22px); border-radius:8px; overflow:hidden; box-shadow:0 4px 14px rgba(0,0,0,.4); }
+  .sb .hd { background:var(--lime); color:var(--navy); font-weight:800; padding:2px 10px; font-size:.7em; letter-spacing:.5px; }
+  .sb table { border-collapse:collapse; background:rgba(11,29,51,.9); }
+  .sb td { padding:.18em .45em; font-weight:800; text-align:center; }
+  .sb td.n { text-align:left; min-width:6em; max-width:12em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sb td.g { background:var(--navy2); }
+  .sb td.p { background:var(--lime); color:var(--navy); min-width:2.4em; }
+  .sb td.lost { color:var(--grey); }
+  .dot { display:inline-block; width:.5em; height:.5em; border-radius:50%; background:var(--lime); margin-right:.3em; visibility:hidden; }
+  .dot.on { visibility:visible; }
+  .badge { position:absolute; left:2.5%; top:calc(4% + 6.2em); font-size:clamp(10px,2.2vw,18px); font-weight:800; padding:.25em .8em; border-radius:1em; background:var(--lime); color:var(--navy); display:none; }
+  .badge.red { background:var(--red); color:#fff; }
+  .status { position:absolute; right:2.5%; top:4%; font-size:clamp(10px,2.4vw,20px); font-weight:800; padding:.3em .9em; border-radius:1em; background:var(--red); display:none; }
+  .replay { position:absolute; right:2.5%; bottom:6%; font-size:clamp(12px,3vw,26px); font-weight:800; padding:.3em .9em; border-radius:.3em; background:var(--lime); color:var(--navy); display:none; animation:pulse 1s infinite alternate; }
+  @keyframes pulse { from { opacity:.75 } to { opacity:1 } }
+  .wipe { position:absolute; inset:0; pointer-events:none; background:linear-gradient(105deg,transparent 0 30%,var(--lime) 30% 34%,var(--navy) 34% 96%,var(--lime) 96% 100%); transform:translateX(-140%); }
+  .wipe.go { animation:wipe 1.4s ease-in-out; }
+  @keyframes wipe { 0% { transform:translateX(-140%) } 45%,55% { transform:translateX(-20%) } 100% { transform:translateX(140%) } }
+  main { padding:12px 16px 40px; max-width:900px; margin:0 auto; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; margin:10px 0; }
+  .chip { background:var(--navy2); border:1px solid var(--navy3); color:#fff; border-radius:18px; padding:8px 14px; font-size:15px; font-weight:700; }
+  .chip.sel { background:var(--lime); color:var(--navy); border-color:var(--lime); }
+  .chip .lv { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--grey); margin-right:6px; }
+  .chip .lv.on { background:#2ecc71; }
+  h3 { margin:22px 0 6px; font-size:16px; color:var(--grey); font-weight:700; letter-spacing:.5px; text-transform:uppercase; }
+  .ctrl { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  button { font:inherit; font-weight:800; font-size:17px; border:0; border-radius:14px; padding:16px; background:var(--navy3); color:#fff; }
+  button.big { background:var(--lime); color:var(--navy); font-size:20px; padding:22px 10px; }
+  button.red { background:var(--red); }
+  input { font:inherit; font-size:18px; padding:12px; border-radius:10px; border:1px solid var(--navy3); background:var(--navy2); color:#fff; width:9em; }
+  .muted { color:var(--grey); font-size:14px; }
+  .msg { min-height:1.2em; color:var(--lime); font-weight:700; }
+</style>
+</head>
+<body>
+<header>
+  <div class="ball"></div>
+  <div class="brand">PADEL <b>GRABBER</b></div>
+  <div id="live" class="live off">CONECTANDO…</div>
+</header>
+
+<div class="stage">
+  <img id="video" src="/stream" alt="Directo">
+  <div class="sb" id="sb">
+    <div class="hd" id="hd">PADEL GRABBER</div>
+    <table><tr id="rA"></tr><tr id="rB"></tr></table>
+  </div>
+  <div class="badge" id="badge"></div>
+  <div class="status" id="status"></div>
+  <div class="replay" id="replay"></div>
+  <div class="wipe" id="wipe"></div>
+</div>
+
+<main>
+  <div class="muted" id="info"></div>
+  <h3>Cámaras</h3>
+  <div class="row" id="cams"></div>
+
+  <h3>Mesa del partido</h3>
+  <div class="muted">Con el PIN que aparece en el móvil que graba puedes apuntar los puntos desde aquí.</div>
+  <div class="row">
+    <input id="pin" inputmode="numeric" maxlength="6" placeholder="PIN">
+    <button onclick="savePin()">Guardar</button>
+  </div>
+  <div class="ctrl">
+    <button class="big" id="bA" onclick="cmd('point',{team:0})">+1 A</button>
+    <button class="big" id="bB" onclick="cmd('point',{team:1})">+1 B</button>
+    <button onclick="cmd('undo')">↶ Deshacer</button>
+    <button onclick="cmd('toggle')">⏯ Pausa / seguir</button>
+    <button class="red" onclick="cmd('review')">Videoarbitraje</button>
+    <button onclick="cmd('onair',{cam:viewing})">Poner esta cámara en antena</button>
+  </div>
+  <div class="msg" id="msg"></div>
+</main>
+
+<script>
+  var viewing = 'program';
+  var lastKey = '';
+  var pinBox = document.getElementById('pin');
+  try { pinBox.value = localStorage.getItem('pg_pin') || ''; } catch (e) {}
+
+  function savePin() { try { localStorage.setItem('pg_pin', pinBox.value); } catch (e) {} msg('PIN guardado'); }
+  function msg(t) { var m = document.getElementById('msg'); m.textContent = t; setTimeout(function(){ if (m.textContent === t) m.textContent = ''; }, 2500); }
+
+  function cmd(c, args) {
+    var p = 'c=' + encodeURIComponent(c) + '&pin=' + encodeURIComponent(pinBox.value);
+    if (args) for (var k in args) p += '&' + k + '=' + encodeURIComponent(args[k]);
+    fetch('/api/cmd?' + p, { method:'POST' }).then(function(r){ return r.json(); })
+      .then(function(j){ msg(j.ok ? 'Hecho' : (j.error || 'Error')); })
+      .catch(function(){ msg('Sin conexión'); });
+  }
+
+  function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+
+  function row(i, st) {
+    var sc = st.score, name = i === 0 ? st.match.teamA : st.match.teamB;
+    var h = '<td class="n"><span class="dot' + (!sc.finished && sc.server === i ? ' on' : '') + '"></span>' + esc(name) + '</td>';
+    (sc.sets || []).forEach(function(s){
+      var mine = i === 0 ? s.a : s.b, other = i === 0 ? s.b : s.a;
+      var v = s['super'] ? (i === 0 ? s.tbA : s.tbB) : mine;
+      h += '<td class="' + (mine > other ? '' : 'lost') + '">' + esc(v) + '</td>';
+    });
+    if (!sc.finished) {
+      h += '<td class="g">' + esc(sc.superTb ? '-' : (i === 0 ? sc.ga : sc.gb)) + '</td>';
+      h += '<td class="p">' + esc(i === 0 ? sc.pa : sc.pb) + '</td>';
+    }
+    return h;
+  }
+
+  function camChip(id, name, live) {
+    return '<button class="chip' + (viewing === id ? ' sel' : '') + '" data-id="' + esc(id) + '">' +
+      (live === undefined ? '' : '<span class="lv' + (live ? ' on' : '') + '"></span>') + esc(name) + '</button>';
+  }
+
+  function setView(id) {
+    viewing = id;
+    document.getElementById('video').src = id === 'program' ? '/stream?t=' + Date.now() : '/cam?id=' + encodeURIComponent(id) + '&t=' + Date.now();
+  }
+
+  document.getElementById('cams').addEventListener('click', function(e){
+    var b = e.target.closest('.chip'); if (!b) return; setView(b.getAttribute('data-id')); poll();
+  });
+
+  function poll() {
+    fetch('/api/state', { cache:'no-store' }).then(function(r){ return r.json(); }).then(function(st){
+      var live = document.getElementById('live');
+      live.textContent = st.status === 'finished' ? 'FINAL' : (st.status === 'ready' ? 'PREPARADO' : 'EN DIRECTO');
+      live.className = 'live' + (st.status === 'playing' ? '' : ' off');
+      document.getElementById('hd').textContent = 'PADEL GRABBER' + (st.match.club ? ' · ' + st.match.club : '') + (st.score.finished ? ' · FINAL' : ' · SET ' + st.score.setNo);
+      document.getElementById('rA').innerHTML = row(0, st);
+      document.getElementById('rB').innerHTML = row(1, st);
+      document.getElementById('bA').textContent = '+1 ' + st.match.teamA;
+      document.getElementById('bB').textContent = '+1 ' + st.match.teamB;
+      var b = document.getElementById('badge');
+      b.style.display = st.badge ? 'block' : 'none'; b.textContent = st.badge || '';
+      b.className = 'badge' + (st.badge && st.badge.indexOf('BOLA') === 0 ? ' red' : '');
+      var s = document.getElementById('status');
+      s.style.display = st.statusText ? 'block' : 'none'; s.textContent = st.statusText || '';
+      var r = document.getElementById('replay');
+      r.style.display = st.replay && viewing === 'program' ? 'block' : 'none'; r.textContent = '↺ ' + (st.replay || '');
+      var info = (st.match.court ? 'Pista ' + st.match.court + ' · ' : '') + 'Grabado: ' + st.rec + ' · ' + st.viewers + ' viendo';
+      document.getElementById('info').textContent = info;
+      var html = camChip('program', 'Realización');
+      (st.cams || []).forEach(function(c){ html += camChip(c.id, c.name + (c.id === st.onAir ? ' ●' : ''), c.live); });
+      document.getElementById('cams').innerHTML = html;
+      var key = st.score.setNo + '/' + (st.score.sets || []).length + '/' + st.score.ga + '-' + st.score.gb + '/' + st.status;
+      if (lastKey && key !== lastKey) { var w = document.getElementById('wipe'); w.classList.remove('go'); void w.offsetWidth; w.classList.add('go'); }
+      lastKey = key;
+    }).catch(function(){
+      var live = document.getElementById('live'); live.textContent = 'SIN CONEXIÓN'; live.className = 'live off';
+    });
+  }
+  document.getElementById('video').addEventListener('error', function(){ setTimeout(function(){ setView(viewing); }, 2000); });
+  poll(); setInterval(poll, 800);
+</script>
+</body>
+</html>

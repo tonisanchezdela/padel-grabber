@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="pg_navy">#0B1D33</color>
+    <color name="pg_navy2">#132B4A</color>
+    <color name="pg_lime">#C6FF00</color>
+
+    <style name="AppTheme" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:colorPrimary">@color/pg_navy</item>
+        <item name="android:colorPrimaryDark">@color/pg_navy</item>
+        <item name="android:colorAccent">@color/pg_lime</item>
+        <item name="android:windowBackground">@color/pg_navy</item>
+        <item name="android:statusBarColor">@color/pg_navy</item>
+        <item name="android:navigationBarColor">@color/pg_navy</item>
+    </style>
+
+    <style name="AppTheme.Fullscreen">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+</resources>
