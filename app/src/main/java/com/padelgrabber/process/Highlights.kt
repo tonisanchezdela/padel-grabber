@@ -83,7 +83,9 @@ object Highlights {
 
     /** Resumen: bolas de set y partido + los puntos más largos, hasta ~2,5 minutos. */
     fun summary(m: Match, videoDurationMs: Long, maxTotalMs: Long = 150_000): List<Piece> {
-        if (m.points.isEmpty()) return emptyList()
+        // Sin puntos apuntados usamos los que detectó la app sola por el movimiento
+        val points = if (m.points.isNotEmpty()) m.points else autoPoints(m)
+        if (points.isEmpty()) return emptyList()
         fun window(p: PointRec): Pair<Long, Long> {
             val end = (p.tMs - TAP_DELAY).coerceIn(0, videoDurationMs)
             val start = maxOf(p.startMs - 1000, end - 20_000, 0)
@@ -95,11 +97,12 @@ object Highlights {
                 Ev.has(p.flags, Ev.SET) -> "SET ${p.set} PARA ${if (p.team == 0) m.teamA else m.teamB}".uppercase()
                 else -> "MEJOR PUNTO"
             }
+            if (p.team < 0) return title to "Punto de ${secs(p.durationMs)} s"
             return title to "Set ${p.set} · Juego ${p.gameInSet} · ${secs(p.durationMs)} s de punto"
         }
 
-        val forced = m.points.filter { Ev.has(it.flags, Ev.SET) || Ev.has(it.flags, Ev.MATCH) }
-        val rest = m.points.filter { it !in forced }.sortedByDescending { it.durationMs }
+        val forced = points.filter { Ev.has(it.flags, Ev.SET) || Ev.has(it.flags, Ev.MATCH) }
+        val rest = points.filter { it !in forced }.sortedByDescending { it.durationMs }
         val chosen = ArrayList<PointRec>()
         var total = 0L
         for (p in forced + rest) {
@@ -130,6 +133,13 @@ object Highlights {
         }
         return result
     }
+
+    /** Puntos detectados automáticamente (marcas "rally"), como si se hubieran apuntado. */
+    fun autoPoints(m: Match): List<PointRec> =
+        m.markers.filter { it.type == Marker.RALLY }.mapIndexedNotNull { i, mk ->
+            val start = mk.text.toLongOrNull() ?: return@mapIndexedNotNull null
+            PointRec(i, -1, mk.tMs + TAP_DELAY, start, 1, 0, 0, 0, "")
+        }
 
     fun resultLine(m: Match): String {
         val sets = ScoreEngine.setsSummary(m.sets)

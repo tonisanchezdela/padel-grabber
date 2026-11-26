@@ -33,6 +33,7 @@ import com.padelgrabber.match.MatchStore
 import com.padelgrabber.net.CameraServer
 import com.padelgrabber.net.Discovery
 import com.padelgrabber.net.FrameHub
+import com.padelgrabber.overlay.Cortinilla
 import com.padelgrabber.overlay.RenderState
 import com.padelgrabber.record.CameraController
 import com.padelgrabber.record.RecordActivity
@@ -83,6 +84,10 @@ class CameraModeActivity : ComponentActivity(), FrameAnalyzer.Listener {
     private var paused = false
     private var manual = false
     private var camName = "Cámara"
+    private var lastCortSeq = -1
+    @Volatile private var localCort: Cortinilla? = null
+    private var stopScheduled = false
+    @Volatile private var polling = false
 
     private val permissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) startCamera()
@@ -206,7 +211,7 @@ class CameraModeActivity : ComponentActivity(), FrameAnalyzer.Listener {
     private val poller = object : Runnable {
         override fun run() {
             poll()
-            handler.postDelayed(this, 1500)
+            handler.postDelayed(this, 700)
         }
     }
 
@@ -216,9 +221,12 @@ class CameraModeActivity : ComponentActivity(), FrameAnalyzer.Listener {
             statusLabel.text = "$camName\nBuscando el móvil principal en la wifi…"
             return
         }
+        if (polling) return
+        polling = true
         io.execute {
             val q = "id=${enc(prefs.deviceId)}&name=${enc(camName)}&port=$CAM_PORT"
             val st = request("http://$host:$mainPort/api/register?$q", "POST")
+            polling = false
             runOnUiThread { onState(st) }
         }
     }
@@ -239,13 +247,32 @@ class CameraModeActivity : ComponentActivity(), FrameAnalyzer.Listener {
                 "finished" -> "Partido terminado"
                 else -> "Esperando a que empiece"
             } + if (gesture.progress > 0.05f) "\n✋ VAR…" else ""
+        // Copiamos las cortinillas del móvil principal para que salgan también en este ángulo
+        st.optJSONObject("cort")?.let { c ->
+            val seq = c.optInt("seq", -1)
+            if (lastCortSeq >= 0 && seq != lastCortSeq && c.has("dur")) {
+                val dur = c.optLong("dur")
+                val age = c.optLong("age")
+                if (age < dur) {
+                    localCort = Cortinilla(
+                        c.optString("title"), c.optString("sub"),
+                        SystemClock.uptimeMillis() - age, dur, c.optInt("style")
+                    )
+                }
+            }
+            lastCortSeq = seq
+        }
         renderState = buildRender(st)
         // Seguir al principal
         if (!manual) {
             when (status) {
                 "playing" -> if (!recording) startLocal() else if (paused) { camera?.resume(); paused = false }
                 "paused" -> if (recording && !paused) { camera?.pause(); paused = true }
-                "finished" -> if (recording) stopLocal()
+                "finished" -> if (recording && !stopScheduled) {
+                    // Dejamos que se grabe la cortinilla de final antes de parar
+                    stopScheduled = true
+                    handler.postDelayed({ if (recording) stopLocal() }, 6000)
+                }
             }
         }
     }
@@ -275,7 +302,8 @@ class CameraModeActivity : ComponentActivity(), FrameAnalyzer.Listener {
             club = m.optString("club"),
             badge = if (st.isNull("badge")) null else st.optString("badge"),
             status = if (st.isNull("statusText")) null else st.optString("statusText"),
-            camLabel = camName.uppercase()
+            camLabel = camName.uppercase(),
+            cortinilla = localCort
         )
     }
 
@@ -351,6 +379,7 @@ class CameraModeActivity : ComponentActivity(), FrameAnalyzer.Listener {
         }
         recording = true
         paused = false
+        stopScheduled = false
         recBtn.text = "Parar"
     }
 

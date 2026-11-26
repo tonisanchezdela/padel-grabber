@@ -37,6 +37,7 @@ class SettingsActivity : ComponentActivity() {
             val inactivity = input("45", p.inactivitySec.toString(), numeric = true)
             label("Sensibilidad del detector de movimiento")
             choice(listOf("1", "2", "3", "4", "5"), p.motionSensitivity - 1) { p.motionSensitivity = it + 1 }
+            toggle("Detectar cada punto y poner cortinilla", p.autoRally) { p.autoRally = it }
             toggle("Videoarbitraje con el gesto del brazo", p.gestureReview) { p.gestureReview = it }
 
             title("Directo por wifi", 20f)

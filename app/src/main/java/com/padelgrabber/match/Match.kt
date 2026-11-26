@@ -49,6 +49,7 @@ data class Marker(val type: String, val tMs: Long, val text: String) {
         const val REVIEW = "review"
         const val PAUSE = "pause"
         const val RESUME = "resume"
+        const val RALLY = "rally"   // punto detectado solo: t = fin, text = inicio
         fun fromJson(o: JSONObject) = Marker(o.optString("type"), o.optLong("t"), o.optString("text"))
     }
 }

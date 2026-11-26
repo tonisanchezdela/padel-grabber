@@ -73,10 +73,12 @@ class LiveServer(
         val name = req.q("name")?.take(30)?.ifBlank { null } ?: "Cámara"
         val url = "http://${req.remoteIp}:$camPort/stream"
         val existing = clients[id]
+        var isNew = false
         if (existing == null) {
             val c = MjpegClient(id, name, url)
             clients[id] = c
             c.start()
+            isNew = true
         } else {
             existing.name = name
             if (existing.url != url) {
@@ -84,9 +86,10 @@ class LiveServer(
                 val c = MjpegClient(id, name, url)
                 clients[id] = c
                 c.start()
+                isNew = true
             }
         }
-        main.post { host.onCameraRegistered(id, name) }
+        if (isNew) main.post { host.onCameraRegistered(id, name) }
         resp.json(host.stateJson().toString())
     }
 

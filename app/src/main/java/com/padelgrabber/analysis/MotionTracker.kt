@@ -48,6 +48,55 @@ class MotionTracker(sensitivity: Int = 3) {
             activeSince = -1
         }
         lastWall = wall
+        detectRally(wall, video)
+    }
+
+    // ---------------- Detección automática de puntos ----------------
+
+    /** Se llama (en el hilo de análisis) cuando termina un punto: inicio y fin en ms del vídeo. */
+    @Volatile var onRally: ((startVideo: Long, endVideo: Long) -> Unit)? = null
+
+    private var aboveSince = -1L
+    private var aboveSinceVideo = 0L
+    private var rallyStartWall = -1L
+    private var rallyStartVideo = 0L
+    private var belowSince = -1L
+    private var belowSinceVideo = 0L
+
+    /**
+     * Juego = movimiento por encima del umbral durante 1,5 s seguidos.
+     * Fin del punto = la pista se calma (por debajo del 80 % del umbral) durante 1,8 s.
+     * Solo cuenta si el punto ha durado al menos 4 s.
+     */
+    private fun detectRally(wall: Long, video: Long) {
+        val thr = threshold()
+        if (rallyStartWall < 0) {
+            if (smoothed > thr) {
+                if (aboveSince < 0) { aboveSince = wall; aboveSinceVideo = video }
+                if (wall - aboveSince >= 1500) {
+                    rallyStartWall = aboveSince
+                    rallyStartVideo = aboveSinceVideo
+                    belowSince = -1
+                }
+            } else {
+                aboveSince = -1
+            }
+            return
+        }
+        if (smoothed < thr * 0.8f) {
+            if (belowSince < 0) { belowSince = wall; belowSinceVideo = video }
+            if (wall - belowSince >= 1800) {
+                val dur = belowSince - rallyStartWall
+                if (dur >= 4000) onRally?.invoke(rallyStartVideo, belowSinceVideo)
+                rallyStartWall = -1
+                aboveSince = -1
+                belowSince = -1
+            }
+        } else {
+            belowSince = -1
+            // Más de 3 minutos "jugando" no es un punto: empezamos de nuevo
+            if (wall - rallyStartWall > 180_000) { rallyStartWall = -1; aboveSince = -1 }
+        }
     }
 
     private var cachedThreshold = 0.02f
@@ -75,6 +124,9 @@ class MotionTracker(sensitivity: Int = 3) {
     @Synchronized
     fun reset() {
         samples.clear()
+        rallyStartWall = -1
+        aboveSince = -1
+        belowSince = -1
         activeSince = -1
         quietSince = -1
     }

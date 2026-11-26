@@ -49,6 +49,7 @@ class SetupActivity : ComponentActivity() {
 
             title("Durante la grabación", 20f)
             toggle("Autopausa en descansos y cambios de lado", prefs.autoPause) { prefs.autoPause = it }
+            toggle("Detectar cada punto y poner cortinilla", prefs.autoRally) { prefs.autoRally = it }
             toggle("Videoarbitraje con el gesto del brazo", prefs.gestureReview) { prefs.gestureReview = it }
             toggle("Emitir en directo por la wifi del club", prefs.liveWifi) { prefs.liveWifi = it }
             toggle("Calidad 1080p (si no, 720p: ocupa menos)", prefs.fullHd) { prefs.fullHd = it }

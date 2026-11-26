@@ -181,7 +181,7 @@ class MatchDetailActivity : ComponentActivity() {
 
     private fun autoPipeline() {
         val steps = ArrayList<(() -> Unit) -> Unit>()
-        if (match.role == Match.ROLE_MAIN && prefs.autoProcess && match.points.isNotEmpty()) {
+        if (match.role == Match.ROLE_MAIN && prefs.autoProcess && (match.points.isNotEmpty() || Highlights.autoPoints(match).isNotEmpty())) {
             steps.add { next -> makeSummary(next) }
             steps.add { next -> makeReplays(next) }
         }

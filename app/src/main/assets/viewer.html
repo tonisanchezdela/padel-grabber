@@ -164,7 +164,7 @@
       var html = camChip('program', 'Realización');
       (st.cams || []).forEach(function(c){ html += camChip(c.id, c.name + (c.id === st.onAir ? ' ●' : ''), c.live); });
       document.getElementById('cams').innerHTML = html;
-      var key = st.score.setNo + '/' + (st.score.sets || []).length + '/' + st.score.ga + '-' + st.score.gb + '/' + st.status;
+      var key = (st.cort ? st.cort.seq : '') + '/' + st.score.setNo + '/' + (st.score.sets || []).length + '/' + st.score.ga + '-' + st.score.gb + '/' + st.status;
       if (lastKey && key !== lastKey) { var w = document.getElementById('wipe'); w.classList.remove('go'); void w.offsetWidth; w.classList.add('go'); }
       lastKey = key;
     }).catch(function(){

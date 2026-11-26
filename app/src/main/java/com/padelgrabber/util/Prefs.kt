@@ -66,6 +66,11 @@ class Prefs(ctx: Context) {
         get() = sp.getInt("motion_sens", 3)
         set(v) = sp.edit().putInt("motion_sens", v.coerceIn(1, 5)).apply()
 
+    /** Detectar el final de cada punto por el movimiento y poner una cortinilla. */
+    var autoRally: Boolean
+        get() = sp.getBoolean("auto_rally", true)
+        set(v) = sp.edit().putBoolean("auto_rally", v).apply()
+
     var gestureReview: Boolean
         get() = sp.getBoolean("gesture", true)
         set(v) = sp.edit().putBoolean("gesture", v).apply()

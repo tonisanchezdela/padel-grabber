@@ -6,7 +6,7 @@ App Android para grabar partidas de pádel con el propio móvil. El marcador va 
 
 | Fase | Función |
 |---|---|
-| 1 | Grabación con **marcador de pádel incrustado** (15-30-40, punto de oro o ventaja, tie-break, super tie-break, saque) y **cortinillas animadas Padel Grabber** al empezar, en cada juego, en los cambios de lado, al final de cada set y al terminar. |
+| 1 | Grabación con **marcador de pádel incrustado** (15-30-40, punto de oro o ventaja, tie-break, super tie-break, saque) y **cortinillas animadas Padel Grabber** al empezar, **entre cada punto** (la app detecta sola cuándo se para el juego), en los cambios de lado, al final de cada set y la de **final de partido** al terminar. |
 | 2 | **Repeticiones** del final del punto más largo de cada juego, intercaladas en el vídeo del partido, y **resumen** con bolas de set, punto de partido y los puntos más largos (unos 2,5 min). |
 | 3 | **Autopausa**: se para sola en los descansos (cambio de lado: mín. 30 s, entre sets: mín. 60 s) y cuando no hay movimiento en la pista. Vuelve a grabar cuando detecta juego. |
 | 4 | **Videoarbitraje**: un jugador mira a cualquier cámara con un brazo levantado 3 segundos → se repiten los últimos segundos desde todas las cámaras, a cámara lenta. También con el botón VAR. |

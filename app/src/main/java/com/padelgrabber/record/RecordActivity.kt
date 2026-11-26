@@ -105,6 +105,11 @@ class RecordActivity : ComponentActivity(), FrameAnalyzer.Listener, LiveServer.H
     private var bestClip: List<JFrame> = emptyList()
     private var bestClipDur = 0L
     private var lastKeyAt = 0L
+    private var lastRallyStart = -1L
+    private var lastRallyEnd = -1L
+    private var rallyCount = 0
+    private var lastPointCortAt = 0L
+    @Volatile private var cortSeq = 0
     private var zoom = 1f
 
     // Vistas
@@ -148,6 +153,7 @@ class RecordActivity : ComponentActivity(), FrameAnalyzer.Listener, LiveServer.H
         engine = ScoreEngine(match.config)
         score = engine.initial()
         motion = MotionTracker(prefs.motionSensitivity)
+        motion.onRally = { s, e -> handler.post { onRallyDetected(s, e) } }
         analyzer.jpegEnabled = true // también hace falta para el videoarbitraje
         analyzer.poseEnabled = prefs.gestureReview
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -462,7 +468,33 @@ class RecordActivity : ComponentActivity(), FrameAnalyzer.Listener, LiveServer.H
 
     private fun showCortinilla(title: String, subtitle: String, durationMs: Long, style: Int = Cortinilla.FULL) {
         cortinilla = Cortinilla(title, subtitle, SystemClock.uptimeMillis(), durationMs, style)
+        cortSeq++
         updateRender()
+    }
+
+    private fun cortinillaActive(now: Long): Boolean {
+        val c = cortinilla ?: return false
+        return now < c.startMs + c.durationMs
+    }
+
+    /** Barrido rápido entre puntos (una sola vez por punto). */
+    private fun pointCortinilla() {
+        val now = SystemClock.uptimeMillis()
+        if (now - lastPointCortAt < 6000 || cortinillaActive(now)) return
+        lastPointCortAt = now
+        showCortinilla("", "", 1300, Cortinilla.QUICK)
+    }
+
+    /** El detector de movimiento dice que el juego se ha parado: fin de un punto. */
+    private fun onRallyDetected(startVideo: Long, endVideo: Long) {
+        if (phase != Phase.PLAYING || review.isOpen) return
+        if (endVideo <= lastPointVideo) return
+        lastRallyStart = startVideo
+        lastRallyEnd = endVideo
+        rallyCount++
+        match.markers.add(Marker(Marker.RALLY, endVideo, startVideo.toString()))
+        save()
+        if (prefs.autoRally) pointCortinilla()
     }
 
     private fun scoreLine(): String {
@@ -557,13 +589,32 @@ class RecordActivity : ComponentActivity(), FrameAnalyzer.Listener, LiveServer.H
             .show()
     }
 
-    private fun finishRecording() {
+    /** Termina con la cortinilla de final de partido grabada en el vídeo. */
+    private fun finishRecording(outro: Boolean = true) {
         if (phase == Phase.FINISHED) return
         pendingPause?.let { handler.removeCallbacks(it) }
+        pendingPause = null
         if (phase == Phase.READY) { finish(); return }
+        if (phase == Phase.PAUSED) resumeRecording()
+        review.hide()
         phase = Phase.FINISHED
-        statusText = "GUARDANDO…"
+        statusText = null
+        val winner = when (score.winner) { 0 -> match.teamA; 1 -> match.teamB; else -> null }
+        val result = ScoreEngine.setsSummary(currentSets())
+        val sub = when {
+            winner != null && result.isNotBlank() -> "Ganan $winner · $result"
+            result.isNotBlank() -> "${match.teamA}  $result  ${match.teamB}"
+            else -> "${match.teamA}  vs  ${match.teamB}"
+        }
         updateButtons()
+        if (!outro) { stopNow(); return }
+        showCortinilla("FINAL DEL PARTIDO", sub, 5200)
+        handler.postDelayed({ stopNow() }, 5600)
+    }
+
+    private fun stopNow() {
+        statusText = "GUARDANDO…"
+        updateRender()
         camera?.stopRecording()
     }
 
@@ -604,7 +655,10 @@ class RecordActivity : ComponentActivity(), FrameAnalyzer.Listener, LiveServer.H
 
         val nowUp = SystemClock.uptimeMillis()
         val nowV = clock.now(nowUp)
-        val start = motion.rallyStart(lastPointVideo, nowV)
+        // Si el detector vio el punto, usamos su inicio; si no, lo estimamos
+        val start = if (lastRallyStart >= 0 && lastRallyEnd > lastPointVideo && nowV - lastRallyEnd < 20_000) {
+            lastRallyStart
+        } else motion.rallyStart(lastPointVideo, nowV)
         val before = score
         val out = engine.point(before, team)
         history.add(before)
@@ -646,9 +700,9 @@ class RecordActivity : ComponentActivity(), FrameAnalyzer.Listener, LiveServer.H
             Ev.has(flags, Ev.MATCH) -> {
                 val winner = if (score.winner == 0) a else b
                 showCortinilla("¡GANAN $winner!", ScoreEngine.setsSummary(score.sets), 6500)
-                val stop = Runnable { finishRecording() }
+                val stop = Runnable { pendingStop = null; finishRecording(outro = false) }
                 pendingStop = stop
-                handler.postDelayed(stop, 7000)
+                handler.postDelayed(stop, 6600)
             }
             Ev.has(flags, Ev.SET) -> {
                 val last = score.sets.last()
@@ -662,8 +716,8 @@ class RecordActivity : ComponentActivity(), FrameAnalyzer.Listener, LiveServer.H
                 showCortinilla("CAMBIO DE LADO", "$a  ${score.gamesA}-${score.gamesB}  $b", 3600)
                 if (Ev.has(flags, Ev.BREAK_SHORT)) schedulePause(3900, "DESCANSO", 30_000, 120_000)
             }
-            Ev.has(flags, Ev.GAME) -> showCortinilla("", "", 1400, Cortinilla.QUICK)
             Ev.has(flags, Ev.SIDE_CHANGE) -> showCortinilla("CAMBIO DE LADO", "Tie-break ${score.pointsA}-${score.pointsB}", 2600)
+            else -> pointCortinilla()
         }
     }
 
@@ -825,6 +879,11 @@ class RecordActivity : ComponentActivity(), FrameAnalyzer.Listener, LiveServer.H
             .put("replay", FrameHub.replayLabel ?: JSONObject.NULL)
             .put("cams", cams)
             .put("viewers", live?.viewers ?: 0)
+            .put("cort", cortinilla?.let { c ->
+                JSONObject().put("seq", cortSeq).put("title", c.title).put("sub", c.subtitle)
+                    .put("style", c.style).put("dur", c.durationMs)
+                    .put("age", SystemClock.uptimeMillis() - c.startMs)
+            } ?: JSONObject().put("seq", cortSeq))
     }
 
     override fun onCommand(cmd: String, args: Map<String, String>, fromCamera: String?): String? {
