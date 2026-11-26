@@ -21,9 +21,9 @@ class SettingsActivity : ComponentActivity() {
             title("Ajustes")
 
             title("Plataforma (Supabase)", 20f)
-            label("Crea un proyecto gratis en supabase.com, ejecuta el archivo supabase/setup.sql y copia aquí la URL y la clave «anon public» (Project Settings › API).")
+            label("Crea un proyecto gratis en supabase.com, ejecuta el archivo supabase/setup.sql y copia aquí la URL y la clave pública «Publishable key» (Settings › API Keys).")
             val url = input("https://xxxx.supabase.co", p.supabaseUrl)
-            val key = input("Clave anon public", p.supabaseKey, password = true)
+            val key = input("Publishable key (sb_publishable_…)", p.supabaseKey, password = true)
             val bucket = input("Bucket", p.bucket)
             label("Dirección de tu web de vídeos (opcional, la de GitHub Pages)")
             val web = input("https://usuario.github.io/padel-grabber/", p.webUrl)

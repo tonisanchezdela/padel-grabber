@@ -100,7 +100,9 @@
 
   function api(path) {
     return fetch(base() + '/rest/v1/' + path, {
-      headers: { apikey: cfg.anonKey, Authorization: 'Bearer ' + cfg.anonKey }
+      headers: String(cfg.anonKey).indexOf('eyJ') === 0
+        ? { apikey: cfg.anonKey, Authorization: 'Bearer ' + cfg.anonKey }
+        : { apikey: cfg.anonKey }
     }).then(function (r) { if (!r.ok) throw new Error('Error ' + r.status); return r.json(); });
   }
 
@@ -129,10 +131,10 @@
     app.innerHTML =
       '<div class="setup"><h2>Conecta la plataforma</h2>' +
       (msg ? '<p style="color:#FFB4A8">' + esc(msg) + '</p>' : '') +
-      '<p class="meta">Pon la URL y la clave <b>anon public</b> de tu proyecto de Supabase (Project Settings › API). ' +
+      '<p class="meta">Pon la URL y la clave pública (<b>Publishable key</b> o la antigua <b>anon</b>) de tu proyecto de Supabase (Settings › API Keys). ' +
       'También puedes dejarlas fijas en <code>config.js</code>.</p>' +
       '<label>URL de Supabase</label><input id="su" placeholder="https://xxxx.supabase.co" value="' + esc(cfg.supabaseUrl || '') + '">' +
-      '<label>Clave anon public</label><input id="sk" value="' + esc(cfg.anonKey || '') + '">' +
+      '<label>Clave pública (Publishable key)</label><input id="sk" value="' + esc(cfg.anonKey || '') + '">' +
       '<label>Bucket</label><input id="sb" value="' + esc(cfg.bucket || 'partidos') + '">' +
       '<p><button class="btn lime" id="save">Guardar y cargar</button></p></div>';
     document.getElementById('save').onclick = function () {

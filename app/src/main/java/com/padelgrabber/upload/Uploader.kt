@@ -34,6 +34,16 @@ class Uploader(baseUrl: String, private val key: String, private val bucket: Str
         .writeTimeout(120, TimeUnit.SECONDS)
         .build()
 
+    /**
+     * Claves nuevas (sb_publishable_...) van solo en "apikey".
+     * Las antiguas (anon, un JWT "eyJ...") también en "Authorization".
+     */
+    private fun Request.Builder.auth(): Request.Builder {
+        header("apikey", key)
+        if (key.startsWith("eyJ")) header("Authorization", "Bearer $key")
+        return this
+    }
+
     private fun b64(s: String) = Base64.encodeToString(s.toByteArray(), Base64.NO_WRAP)
 
     fun publicUrl(objectName: String) = "$url/storage/v1/object/public/$bucket/$objectName"
@@ -51,8 +61,7 @@ class Uploader(baseUrl: String, private val key: String, private val bucket: Str
 
         val create = Request.Builder()
             .url("$url/storage/v1/upload/resumable")
-            .header("Authorization", "Bearer $key")
-            .header("apikey", key)
+            .auth()
             .header("Tus-Resumable", "1.0.0")
             .header("Upload-Length", total.toString())
             .header("Upload-Metadata", meta)
@@ -79,9 +88,8 @@ class Uploader(baseUrl: String, private val key: String, private val bucket: Str
                 raf.readFully(buf, 0, n)
                 val req = Request.Builder()
                     .url(location)
-                    .header("Authorization", "Bearer $key")
-                    .header("apikey", key)
-                    .header("Tus-Resumable", "1.0.0")
+                    .auth()
+                            .header("Tus-Resumable", "1.0.0")
                     .header("Upload-Offset", offset.toString())
                     .patch(buf.toRequestBody(OCTET, 0, n))
                     .build()
@@ -112,7 +120,7 @@ class Uploader(baseUrl: String, private val key: String, private val bucket: Str
 
     private fun currentOffset(location: String): Long? = try {
         val req = Request.Builder().url(location).head()
-            .header("Authorization", "Bearer $key").header("apikey", key)
+            .auth()
             .header("Tus-Resumable", "1.0.0").build()
         http.newCall(req).execute().use { r -> r.header("Upload-Offset")?.toLongOrNull() }
     } catch (e: Exception) {
@@ -133,8 +141,7 @@ class Uploader(baseUrl: String, private val key: String, private val bucket: Str
     private fun postRest(table: String, conflict: String, body: String) {
         val req = Request.Builder()
             .url("$url/rest/v1/$table?on_conflict=$conflict")
-            .header("Authorization", "Bearer $key")
-            .header("apikey", key)
+            .auth()
             .header("Prefer", "resolution=merge-duplicates,return=minimal")
             .post(body.toRequestBody(JSON))
             .build()
