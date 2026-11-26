@@ -103,7 +103,14 @@
       headers: String(cfg.anonKey).indexOf('eyJ') === 0
         ? { apikey: cfg.anonKey, Authorization: 'Bearer ' + cfg.anonKey }
         : { apikey: cfg.anonKey }
-    }).then(function (r) { if (!r.ok) throw new Error('Error ' + r.status); return r.json(); });
+    }).then(function (r) {
+      if (r.ok) return r.json();
+      return r.text().then(function (t) {
+        var m = t;
+        try { var j = JSON.parse(t); m = j.message || j.msg || j.error || t; } catch (e) {}
+        throw new Error('Error ' + r.status + (m ? ': ' + String(m).slice(0, 160) : ''));
+      });
+    });
   }
 
   function typeName(t) {
