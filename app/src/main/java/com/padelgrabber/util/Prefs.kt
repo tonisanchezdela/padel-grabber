@@ -6,14 +6,21 @@ import kotlin.random.Random
 
 /** Ajustes de la app. */
 class Prefs(ctx: Context) {
+    companion object {
+        // Plataforma del club (la clave "publishable" es pública por diseño)
+        const val DEFAULT_URL = "https://nefpqzpxbiqsjdgazdup.supabase.co"
+        const val DEFAULT_KEY = "sb_publishable_MlJ9er0M08CmO33DYbasmA_fw-dDQuz"
+        const val DEFAULT_WEB = "https://tonisanchezdela.github.io/padel-grabber/"
+    }
+
     private val sp: SharedPreferences = ctx.getSharedPreferences("padel_grabber", Context.MODE_PRIVATE)
 
     var supabaseUrl: String
-        get() = sp.getString("sb_url", "") ?: ""
+        get() = sp.getString("sb_url", null)?.ifBlank { null } ?: DEFAULT_URL
         set(v) = sp.edit().putString("sb_url", v.trim().trimEnd('/')).apply()
 
     var supabaseKey: String
-        get() = sp.getString("sb_key", "") ?: ""
+        get() = sp.getString("sb_key", null)?.ifBlank { null } ?: DEFAULT_KEY
         set(v) = sp.edit().putString("sb_key", v.trim()).apply()
 
     var bucket: String
@@ -21,7 +28,7 @@ class Prefs(ctx: Context) {
         set(v) = sp.edit().putString("sb_bucket", v.trim().ifEmpty { "partidos" }).apply()
 
     var webUrl: String
-        get() = sp.getString("web_url", "") ?: ""
+        get() = sp.getString("web_url", null)?.ifBlank { null } ?: DEFAULT_WEB
         set(v) = sp.edit().putString("web_url", v.trim()).apply()
 
     var club: String

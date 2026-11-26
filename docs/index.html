@@ -87,7 +87,7 @@
   var cfg = window.PG_CONFIG || {};
   try {
     var saved = JSON.parse(localStorage.getItem('pg_config') || 'null');
-    if (saved && (!cfg.supabaseUrl || !cfg.anonKey)) { cfg.supabaseUrl = saved.supabaseUrl; cfg.anonKey = saved.anonKey; cfg.bucket = saved.bucket || cfg.bucket; }
+    if (saved && saved.supabaseUrl && saved.supabaseUrl.indexOf('supabase.co') > 0 && (!cfg.supabaseUrl || !cfg.anonKey)) { cfg.supabaseUrl = saved.supabaseUrl; cfg.anonKey = saved.anonKey; cfg.bucket = saved.bucket || cfg.bucket; }
   } catch (e) {}
   cfg.bucket = cfg.bucket || 'partidos';
   var app = document.getElementById('app');
