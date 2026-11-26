@@ -30,6 +30,11 @@ create table if not exists public.videos (
 create index if not exists videos_partido_idx on public.videos (partido_id);
 
 -- 2) Permisos: la app y la web usan la clave pública (anon)
+grant usage on schema public to anon, authenticated;
+grant select, insert, update on public.partidos to anon, authenticated;
+grant select, insert, update on public.videos   to anon, authenticated;
+grant usage, select on all sequences in schema public to anon, authenticated;
+
 alter table public.partidos enable row level security;
 alter table public.videos   enable row level security;
 
